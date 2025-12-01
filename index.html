@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lemonade Tycoon</title>
+</head>
+<body>
+    <h1>Management Simulator</h1>
+    <div class="main-layout">
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="900" height="300"></canvas>
+        </div>
+        <div class="controls-container">
+            <div class="left-col">
+                <div class="panel">
+                    <h2>Overview</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Day</span>
+                            <span class="stat-value" id="day-display">1</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Money</span>
+                            <span class="stat-value money" id="money-display">$20.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel" style="margin-top: 20px;">
+                    <h2>Inventory</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Lemons</span>
+                            <span class="stat-value" id="inv-lemons">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Sugar</span>
+                            <span class="stat-value" id="inv-sugar">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
