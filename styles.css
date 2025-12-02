@@ -1,0 +1,59 @@
+:root {
+    --primary: #e1ba1e;
+    --secondary: #27ae60; 
+    --dark: #2c3e50;
+    --light: #ecf0f1;
+    --accent: #e67e22;
+}
+body {
+    font-family: Calibri;
+    background-color: var(--light);
+    color: var(--dark);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+}
+h1 {
+    margin: 0 0 20px 0;
+    color: var(--dark);
+}
+.game-wrapper {
+    max-width: 800px;
+    width: 100%;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border: 2px solid var(--dark);
+}
+.header-stats {
+    background: var(--dark);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+.money-display {
+    color: var(--secondary); 
+    font-size: 1.5rem;
+}
+.canvas-container {
+    position: relative;
+    background: #87CEEB;
+    cursor: pointer;
+}
+canvas {
+    display: block;
+    width: 100%;
+}
+.controls {
+    padding: 20px;
+    background: #f8f9fa;
+    display: grid;
+}

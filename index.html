@@ -6,39 +6,47 @@
     <title>Lemonade Tycoon</title>
 </head>
 <body>
-    <h1>Management Simulator</h1>
-    <div class="main-layout">
-        <div class="canvas-container">
-            <canvas id="gameCanvas" width="900" height="300"></canvas>
+    <h1>Tycoon Management Simulator</h1>
+    <div class="game-wrapper">
+        <div class="header-stats">
+            <span id="business-name">Lemonade Stand</span>
+            <span>Cash: <span class="money-display" id="money-display">$0.00</span></span>
         </div>
-        <div class="controls-container">
-            <div class="left-col">
-                <div class="panel">
-                    <h2>Overview</h2>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-label">Day</span>
-                            <span class="stat-value" id="day-display">1</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Money</span>
-                            <span class="stat-value money" id="money-display">$20.00</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="panel" style="margin-top: 20px;">
-                    <h2>Inventory</h2>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-label">Lemons</span>
-                            <span class="stat-value" id="inv-lemons">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Sugar</span>
-                            <span class="stat-value" id="inv-sugar">0</span>
-                        </div>
-                    </div>
-                </div>
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="800" height="300"></canvas>
+        </div>
+        <div class="controls">
+            <div class="upgrade-panel">
+                <h3>Hire Managers (Auto-Work)</h3>
+                <button class="upgrade-button" id="hire-1" onclick="game.hireManager(0)">
+                    <span class="button-label">Hire Squeezer</span>
+                    <span class="button-cost">$50.00</span>
+                </button>
+                <button class="upgrade-button" id="hire-2" onclick="game.hireManager(1)">
+                    <span class="button-label">Hire Cashier</span>
+                    <span class="button-cost">$300.00</span>
+                </button>
+            </div>
+            <div class="upgrade-panel">
+                <h3>Upgrades (Speed x1.5)</h3>
+                <button class="upgrade-button" id="upg-1" onclick="game.upgradeStation(0)">
+                    <span class="button">Better juicer</span>
+                    <span class="button-cost">$100.00</span>
+                </button>
+                <button class="upgrade-button" id="upg-2" onclick="game.upgradeStation(1)">
+                    <span class="button-label">Faster Spoons</span>
+                    <span class="button-cost">$250.00</span>
+                </button>
+                <button class="upgrade-button" id="upg-3" onclick="game.upgradeStation(2)">
+                    <span class="button-label">Card Terminal</span>
+                    <span class="button-cost">$500.00</span>
+                </button>
+            </div>
+            <div class="business-panel">
+                <span>Expand business</span>
+                <button class="next-biz-button" id="next-biz-button" onclick="game.unlockNextBusiness()">
+                    Unlock Burger Joint ($2000)
+                </button>
             </div>
         </div>
     </div>
