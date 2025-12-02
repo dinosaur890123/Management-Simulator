@@ -56,4 +56,69 @@ canvas {
     padding: 20px;
     background: #f8f9fa;
     display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.upgrade-panel {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #ecebeb;
+}
+h3 {
+    margin-top: 0;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 5px;
+}
+.upgrade-button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: white;
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.upgrade-button:hover:not(:disabled) {
+    background: rgb(224, 224, 240);
+    transform: translateX(5px);
+}
+.upgrade-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #dedada;
+}
+.button-label {
+    font-weight: bold;
+}
+.button-cost {
+    color: var(--accent);
+    font-size: 0.9em;
+}
+.business-panel {
+    grid-column: 1 / -1;
+    text-align: center;
+    background: var(--dark);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+}
+.next-biz-button {
+    background: var(--primary);
+    color: var(--dark);
+    border: none;
+    padding: 10px 20px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+.next-biz-button:disabled {
+    background: #7f8c8d;
+    cursor: not-allowed;
 }
