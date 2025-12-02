@@ -103,7 +103,7 @@ class Game {
         this.updateUI();
     }
     setupStationsLevel1() {
-        this.stations() [
+        this.stations = [
             new Station(0, "Squeezer", 100, 100, "maker", "#f1c40f", null, "juice"),
             new Station(1, "Mixer", 340, 100, "processor", "#e67e22", "juice", "lemonade"),
             new Station(2, "Stand", 580, 100, "seller", "#27ae60", "lemonade", "money")
