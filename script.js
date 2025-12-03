@@ -240,8 +240,8 @@ class Game {
     }
     updateButtonLabels() {
         this.stations.forEach((s, i) => {
-            document.querySelector(`#hire-${i+1} .btn-label`).textContent = `Hire ${s.name}`;
-            document.querySelector(`#upg-${i+1} .btn-label`).textContent = `Upgrade ${s.name}`;
+            document.querySelector(`#hire-${i+1} .button-label`).textContent = `Hire ${s.name}`;
+            document.querySelector(`#upg-${i+1} .button-label`).textContent = `Upgrade ${s.name}`;
         });
     }
     saveGame() {
