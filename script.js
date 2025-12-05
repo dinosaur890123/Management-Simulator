@@ -297,12 +297,6 @@ class Game {
             nextButton.disabled = true;
         }
     }
-    updateButtonLabels() {
-        this.stations.forEach((s, i) => {
-            document.querySelector(`#hire-${i+1} .button-label`).textContent = `Hire ${s.name}`;
-            document.querySelector(`#upgrade-${i+1} .button-label`).textContent = `Upgrade ${s.name}`;
-        });
-    }
     saveGame() {
         const data = {
             money: this.money,
@@ -317,20 +311,20 @@ class Game {
     }
     loadGame() {
         const saveString = localStorage.getItem('tycoonSave');
-        this.setupStationsLevel1(); 
+        this.setupStations();
         if (saveString) {
             try {
                 const data = JSON.parse(saveString);
                 this.money = data.money || 0;
                 this.businessLevel = data.businessLevel || 1;
                 this.inventory = data.inventory || {};
-                if (this.businessLevel === 2) {
-                    this.setupStationsLevel2();
-                }
-                if (data.stations && data.stations.length === 3) {
-                    data.stations.forEach((savedS, i) => {
-                        this.stations[i].level = savedS.level;
-                        this.stations[i].hasManager = savedS.hasManager;
+                this.setupStations();
+                if (data.stations) {
+                    data.stations.forEach((saved, i) => {
+                        if (this.stations[i]) {
+                            this.stations[i].level = saved.level;
+                            this.stations[i].hasManager = saved.hasManager;
+                        }
                     });
                 }
             } catch (e) {
@@ -345,42 +339,55 @@ class Game {
     animate() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = this.businessLevel === 1 ? "#ecf0f1" : "#5d4037";
-        this.ctx.fillRect(0, 200, 800, 100);
-        this.ctx.strokeStyle = "#8ca2a3";
-        this.ctx.lineWidth = 4;
+        this.ctx.fillRect(0, 200, this.canvas.width, 100);
+        this.ctx.strokeStyle = "rgba(0,0,0,0.1)";
         this.ctx.beginPath();
-        this.ctx.moveTo(220, 150);
-        this.ctx.lineTo(340, 150);
-        this.ctx.moveTo(460, 150);
-        this.ctx.lineTo(580, 150);
+        for (let i=0; i<20; i++) {
+            let x = (i * 100 + this.scrollX) % (20 * 100);
+            this.ctx.moveTo(x, 200);
+            this.ctx.lineTo(x, 300);
+        }
         this.ctx.stroke();
-        this.ctx.setLineDash([]);
-
-        const drawPile = (name, x) => {
-            if (this.inventory[name] > 0) {
-                this.ctx.fillStyle = (name === 'juice' || name === 'lemonade') ? "#f39c12" : "#c0392b";
-                this.ctx.beginPath();
-                this.ctx.arc(x, 150, 12, 0, Math.PI*2);
-                this.ctx.fill();
-                this.ctx.fillStyle = "white";
-                this.ctx.font = "bold 10px Arial";
-                this.ctx.textAlign = "center";
-                this.ctx.fillText(this.inventory[name], x, 154);
+        this.ctx.setLineDash([10, 5]);
+        this.ctx.strokeStyle = "#bdc3c7";
+        this.ctx.lineWidth = 4;
+        this.stations.forEach((s, i) => {
+            if (i < this.stations.length - 1) {
+                const nextS = this.stations[i+1];
+                const startX = s.x + s.w + this.scrollX;
+                const endX = nextS.x + this.scrollX;
+                if (endX > 0 && startX < this.canvas.width) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(startX, s.y + 50);
+                    this.ctx.lineTo(endX, s.y + 50);
+                    this.ctx.stroke();
+                }
             }
-        };
-        if (this.stations[1]) drawPile(this.stations[1].inputName, 280);
-        if (this.stations[2]) drawPile(this.stations[2].inputName, 520);
-        this.stations.forEach(s => {
-            s.tick(this);
-            s.draw(this.ctx);
         });
+        this.ctx.setLineDash([]);
+        this.stations.forEach((s) => {
+            if (s.inputName && this.inventory[s.inputName] > 0) {
+                const drawX = s.x - 30 + this.scrollX;
+                if (drawX > -50 && drawX < this.canvas.width) {
+                    this.ctx.fillStyle = s.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(drawX, s.y + 50, 10 + Math.min(10, this.inventory[s.inputName]), 0, Math.PI*2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = "#ffffff";
+                    this.ctx.font = "10px Calibri";
+                    this.ctx.fillText(this.inventory[s.inputName], drawX, s.y + 55);
+                }
+            }
+        });
+        this.stations.forEach(s => s.draw(this.ctx, this.scrollX));
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
-            p.y -= 1.5;
+            const drawX = p.x;
+            p.y -= 1;
             p.life--;
-            this.ctx.fillStyle = p.color || "#2ecc71";
-            this.ctx.globalAlpha = Math.max(0, p.life / 30);
-            this.ctx.font = "bold 16px Calibri";
+            this.ctx.fillStyle = p.color;
+            this.ctx.globalAlpha = Math.max(0, p.life / 40);
+            this.ctx.font = "bold 14px Calibri";
             this.ctx.fillText(p.text, p.x, p.y);
             this.ctx.globalAlpha = 1.0;
             if (p.life <= 0) this.particles.splice(i, 1);
