@@ -14,8 +14,7 @@ class Station {
         this.level = 1;
         this.hasManager = false;
         this.inputName = inputName;
-        this.outputName = outputName;
-        this.stock = 0; 
+        this.outputName = outputName; 
     }
     getSpeed() {
         return 2 * (1 + (this.level - 1) * 0.2);
@@ -49,7 +48,8 @@ class Station {
         this.working = false;
         this.progress = 0;
         if (this.outputName === 'money') {
-            const revenue = 10 * game.businessLevel;
+            const baseValue = 10 * Math.pow(1.5, this.id);
+            const revenue = baseValue * game.businessLevel;
             game.addMoney(revenue);
             game.spawnFloater(this.x + this.w/2, this.y, `+$${revenue.toFixed(0)}`);
         } else {
@@ -58,6 +58,8 @@ class Station {
         }
     }
     draw(ctx) {
+        const drawX = this.x + scrollX;
+        if (drawX + this.w < 0 || drawX > ctx.canvas.width) return; 
         ctx.fillStyle = this.color;
         ctx.fillRect(this.x, this.y, this.w, this.h);
 
@@ -87,18 +89,22 @@ class Station {
         }
         ctx.fillStyle = "#4d4a4a";
         ctx.fillRect(this.x + 10, this.y + 40, this.w - 20, 10);
-        ctx.fillStyle = "#2ecc71";
+        ctx.fillStyle = this.working ? "#2ecc71" : "#7f8c8d";
         const pct = Math.min(1, this.progress / this.maxProgress);
         ctx.fillRect(this.x + 10, this.y + 40, (this.w - 20) * pct, 10);
     }
     isClicked(mx, my) {
-        return mx >= this.x && mx <= this.x + this.w && my >= this.y && my <= this.y + this.h;
+        const worldMx = mx - scrollX;
+        return worldMx >= this.x && worldMx <= this.x + this.w && my >= this.y && my <= this.y + this.h;
     }
 }
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
+        this.scrollX = 0;
+        this.isDragging = false;
+        this.lastMouseX = 0;
         this.money = 0;
         this.businessLevel = 1;
         this.inventory = {
@@ -111,53 +117,107 @@ class Game {
         this.stations = [];
         this.particles = [];
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        window.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        window.addEventListener('mouseup', () => this.onMouseUp());
         setInterval(() => this.saveGame(), 5000);
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
+        this.generateControls();
         this.updateUI();
     }
     setupStations() {
+        const gap = 180;
+        const y = 100;
         if (this.businessLevel === 1) {
-            this.setupStationsLevel1();
-        } else {
-            this.setupStationsLevel2();
+            document.getElementById('business-name').textContent = "Lemonade Factory";
+            this.stations = [
+                new Station(0, "Picker", 50, y, "#27ae60", null, "lemons"),
+                new Station(1, "Squeezer", 50 + gap, y, "#f1c40f", "lemons", "juice"),
+                new Station(2,  "Mixer", 50 + gap*2, y, "#e67e22", "juice", "lemonade"),
+                new Station(3, "Bottler", 50 + gap*3, y, "#3498db", "lemonade", "bottles"),
+                new Station(4, "Stand", 50 + gap*4, y, "#2ecc71", "bottles", "money")
+            ];
+        } else if (this.businessLevel === 2) {
+            document.getElementById('business-name').textContent = "Burger Empire";
+            this.stations = [
+                new Station(0, "Butcher", 50, y, "#c0392b", null, "meat"),
+                new Station(1, "Grill", 50 + gap, y, "#d35400", "meat", "patty"),
+                new Station(2, "Baker", 50 + gap*2, y, "#f39c12", null, "buns"),
+                new Station(3, "Assembly", 50 + gap*3, y, "#e67e22", ["patty", "buns"], "burger"),
+                new Station(4, "Drive-Thru", 50 + gap*4, y, "#27ae60", "burger", "money")
+            ];
+            this.stations[3].inputName = "patty";
         }
     }
-    setupStationsLevel1() {
-        this.stations = [
-            new Station(0, "Squeezer", 100, 100, "maker", "#f1c40f", null, "juice"),
-            new Station(1, "Mixer", 340, 100, "processor", "#e67e22", "juice", "lemonade"),
-            new Station(2, "Stand", 580, 100, "seller", "#27ae60", "lemonade", "money")
-        ];
-        document.getElementById('business-name').textContent = "Lemonade Stand";
-        this.updateButtonLabels();
+    generateControls() {
+        const container = document.getElementById('dynamic-controls');
+        container.innerHTML = '';
+        const managerDiv = document.createElement('div');
+        managerDiv.className = 'station-control-group';
+        managerDiv.innerHTML = '<h3>Hire Managers</h3>';
+        const upgradeDiv = document.createElement('div');
+        upgradeDiv.className = 'station-control-group';
+        upgradeDiv.innerHTML = '<h3>Upgrades</h3>';
+        this.stations.forEach((s, i) => {
+            const mButton = document.createElement('button');
+            mButton.className = 'upgrade-button';
+            mButton.id = `hire-${i}`;
+            mButton.onclick = () => this.hireManager(i);
+            mButton.innerHTML = `
+            <div>
+                <div class="button-label">Hire ${s.name}</div>
+                <div class="button-sub">Auto-work</div>
+            <div>
+            <div class="button-cost">...</div>
+            `;
+            managerDiv.appendChild(mButton);
+            const uButton = document.createElement('button');
+            uButton.className = 'upgrade-button';
+            uButton.id = `upgrade-${i}`;
+            uButton.onclick = () => this.upgradeStation(i);
+            uButton.innerHTML = `
+            <div>
+                <div class="button-label">${s.name} Mk.II</div>
+                <div class="button-sub">Speed x1.25</div>
+            </div>
+            <div class="button-cost">...</div>
+            `;
+            upgradeDiv.appendChild(uButton);
+        });
+        container.appendChild(managerDiv);
+        container.appendChild(upgradeDiv);
     }
-    setupStationsLevel2() {
-        this.stations = [
-            new Station(0, "Grill", 100, 100, "maker", "#c0392b", null, "patty"),
-            new Station(1, "Assembly", 340, 100, "processor", "#d35400", "patty", "burger"),
-            new Station(2, "Counter", 580, 100, "seller", "#f39c12", "burger", "money")
-        ];
-        document.getElementById('business-name').textContent = "Burger Joint";
-        this.updateButtonLabels();
-    }
-    handleClick(e) {
+    onMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
+        this.isDragging = false;
+        this.lastMouseX = e.clientX;
+        let clickedStation = false;
         this.stations.forEach(s => {
-            if (s.isClicked(mx, my)) {
-                s.tryStartWork(this);
-                this.ctx.fillStyle = "rgba(255,255,255,0.3)";
-                this.ctx.fillRect(s.x, s.y, s.w, s.h);
-                if (started) {
-                    if (Math.random() < 0.1) {
-                        s.progress += 50;
-                        this.spawnFloater(mx, my, "CRIT!", "#e74c3c");
-                    }
+            clickedStation = true;
+            const started = s.tryStartWork(this);
+            if (started) {
+                    this.spawnFloater(s.x + s.w/2 + this.scrollX, s.y, "Click!", "#ffffff");
                 }
-            }
         });
+        if (!clickedStation) {
+            this.isDragging = true;
+        }
+    }
+    onMouseMove(e) {
+        if (this.isDragging) {
+            const dx = e.clientX - this.lastMouseX;
+            this.scrollX += dx;
+            const maxScroll = 0;
+            const minScroll = -(this.stations.length * 180 + 100 - this.canvas.width);
+            if (this.scrollX > maxScroll) this.scrollX = maxScroll;
+            if (this.scrollX < minScroll) this.scrollX = minScroll;
+            this.lastMouseX = e.clientX;
+        }
+    }
+    onMouseUp() {
+        this.isDragging = false;
     }
     addMoney(amount) {
         this.money += amount;
@@ -168,36 +228,28 @@ class Game {
             x: x, y: y, text: text, life: 60, color: color
         });
     }
-    getManagerCost(index) {
-        const base = [50, 150, 300]; 
-        return base[index] * this.businessLevel;
+    getManagerCost(i) {return (100 * (i+1)) * Math.pow(1.5, i) * this.businessLevel;}
+    getUpgradeCost(i) {
+        const station = this.stations[i];
+        return Math.floor(50 * (i+1) * Math.pow(1.6, station.level) * this.businessLevel);
     }
-    getUpgradeCost(index) {
-        const base = [100, 250, 500];
-        const station = this.stations[index];
-        return Math.floor(base[index] * Math.pow(1.5, station.level) * this.businessLevel);
-    }
-    hireManager(index) {
+    hireManager(i) {
         const cost = this.getManagerCost(index);
-        const station = this.stations[index];
-        
-        if (!station.hasManager && this.money >= cost) {
+        if (!this.stations[i].hasManager && this.money >= cost) {
             this.money -= cost;
-            station.hasManager = true;
+            this.stations[i].hasManager = true;
             this.updateUI();
             this.saveGame();
         }
         
     }
-    upgradeStation(stationIndex) {
+    upgradeStation(i) {
         const cost = this.getUpgradeCost(index);
-        const station = this.stations[index];
         if (this.money >= cost) {
             this.money -= cost;
-            station.level++;
+            this.stations[i].level++;
             this.updateUI();
             this.saveGame();
-            this.spawnFloater(station.x + station.w/2, station.y, "UPGRADED!", "#f1c40f");
         }
     }
     unlockNextBusiness() {
@@ -206,42 +258,49 @@ class Game {
             this.money -= cost;
             this.businessLevel = 2;
             this.inventory = {}; 
-            this.setupStationsLevel2();
+            this.setupStations();
+            this.generateControls();
             this.updateUI();
             this.saveGame();
+            this.scrollX = 0;
         }
     }
     updateUI() {
-        document.getElementById('money-display').textContent = '$' + this.money.toFixed(2);
+        document.getElementById('money-display').textContent = '$' + Math.floor(this.money).toLocaleString();
         this.stations.forEach((s, i) => {
-            const upgradeButton = document.getElementById(`upg-${i+1}`);
-            const hireButton = document.getElementById(`hire-${i+1}`);
-            const upCost = this.getUpgradeCost(i);
-            upgradeButton.querySelector('.button-cost').textContent = `$${upCost.toLocaleString()}`;
-            upgradeButton = this.money < upCost;
-            const hireCost = this.getManagerCost(i);
-            if (s.hasManager) {
-                hireButton.disabled = true;
-                hireButton.querySelector('.button-label').textContent = "Hired";
-                hireButton.querySelector('.button-cost').textContent = "---";
-            } else {
-                hireButton.disabled = this.money < hireCost;
-                hireButton.querySelector('.button-cost').textContent = `$${hireCost.toLocaleString()}`;
+            const hireButton = document.getElementById(`hire-${i}`);
+            if (hireButton) {
+                const cost = this.getManagerCost(i);
+                if (s.hasManager) {
+                    hireButton.disabled = true;
+                    hireButton.querySelector('.button-cost').textContent = "OWNED";
+                    hireButton.style.background = "#e1f7d5";
+                } else {
+                    hireButton.disabled = this.money < cost;
+                    hireButton.querySelector('.button-cost').textContent = `$${Math.floor(cost).toLocaleString()}`;
+                }
+            }
+            const upgradeButton = document.getElementById(`upgrade-${i}`);
+            if (upgradeButton) {
+                const cost = this.getUpgradeCost(i);
+                uButton.disabled = this.money < cost;
+                uButton.querySelector('.button-cost').textContent = `$${Math.floor(cost).toLocaleString()}`;
+                uButton.querySelector('.button-label').textContent = `${s.name} (Level ${s.level})`;
             }
         });
         const nextButton = document.getElementById('next-biz-button');
         if (this.businessLevel === 1) {
-            nextButton.disabled = this.money < 2000;
-            nextButton.textContent = "Unlock Burger joint ($2,000)";
+            nextButton.textContent = "Unlock Burger Empire ($10,000)";
+            nextButton.disabled = this.money < 10000;
         } else {
+            nextButton.textContent.textContent = "Max Business Reached";
             nextButton.disabled = true;
-            nextButton.textContent = "Empire maxed out";
         }
     }
     updateButtonLabels() {
         this.stations.forEach((s, i) => {
             document.querySelector(`#hire-${i+1} .button-label`).textContent = `Hire ${s.name}`;
-            document.querySelector(`#upg-${i+1} .button-label`).textContent = `Upgrade ${s.name}`;
+            document.querySelector(`#upgrade-${i+1} .button-label`).textContent = `Upgrade ${s.name}`;
         });
     }
     saveGame() {

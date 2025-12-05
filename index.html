@@ -13,41 +13,24 @@
             <span id="business-name">Lemonade Stand</span>
             <span>Cash: <span class="money-display" id="money-display">$0.00</span></span>
         </div>
-        <div class="canvas-container">
-            <canvas id="gameCanvas" width="800" height="300"></canvas>
+        <div class="canvas-wrapper">
+            <div class="drag-hint">Drag to Scroll</div>
+            <div class="canvas-container">
+                <canvas id="gameCanvas" width="800" height="300"></canvas>
+            </div>
         </div>
         <div class="controls">
-            <div class="upgrade-panel">
-                <h3>Hire Managers (Auto-Work)</h3>
-                <button class="upgrade-button" id="hire-1" onclick="game.hireManager(0)">
-                    <span class="button-label">Hire Squeezer</span>
-                    <span class="button-cost">$50.00</span>
-                </button>
-                <button class="upgrade-button" id="hire-2" onclick="game.hireManager(1)">
-                    <span class="button-label">Hire Cashier</span>
-                    <span class="button-cost">$300.00</span>
-                </button>
-            </div>
-            <div class="upgrade-panel">
-                <h3>Upgrades (Speed x1.5)</h3>
-                <button class="upgrade-button" id="upg-1" onclick="game.upgradeStation(0)">
-                    <span class="button">Better juicer</span>
-                    <span class="button-cost">$100.00</span>
-                </button>
-                <button class="upgrade-button" id="upg-2" onclick="game.upgradeStation(1)">
-                    <span class="button-label">Faster Spoons</span>
-                    <span class="button-cost">$250.00</span>
-                </button>
-                <button class="upgrade-button" id="upg-3" onclick="game.upgradeStation(2)">
-                    <span class="button-label">Card Terminal</span>
-                    <span class="button-cost">$500.00</span>
-                </button>
-            </div>
+            <div id="dynamic-controls" class="dynamic-grid"></div>
             <div class="business-panel">
                 <span>Expand business</span>
                 <button class="next-biz-button" id="next-biz-button" onclick="game.unlockNextBusiness()">
                     Unlock Burger Joint ($2000)
                 </button>
+                <div style="margin-top: 15px; border-top: 1px solid #565252; padding-top: 10px;">
+                    <button onclick="game.resetGame()" style="background:#c0392b; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
+                        Reset Save
+                    </button>
+                </div>
             </div>
         </div>
     </div>
