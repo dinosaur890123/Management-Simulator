@@ -57,6 +57,11 @@ class Station {
             game.spawnFloater(this.x + this.w/2, this.y, `+1 ${this.outputName}`);
         }
     }
+    calculateRevenue(game) {
+        const baseValue = 10 * Math.pow(1.5, this.id);
+        const prestigeMult = 1 + (game.investors * 0.1);
+        return baseValue * game.businessLevel * prestigeMult;
+    }
     draw(ctx) {
         const drawX = this.x + scrollX;
         if (drawX + this.w < 0 || drawX > ctx.canvas.width) return; 
@@ -106,6 +111,7 @@ class Game {
         this.isDragging = false;
         this.lastMouseX = 0;
         this.money = 0;
+        this.investors = 0;
         this.businessLevel = 1;
         this.inventory = {
             juice: 0,
@@ -252,6 +258,23 @@ class Game {
             this.saveGame();
         }
     }
+    doPrestige() {
+        const pendingInvestors = Math.floor(this.money / 50000);
+        if (pendingInvestors < 1) return;
+        if (confirm(`Sell business? You will reset but gain ${pendingInvestors} Investors!`)) {
+            this.investors += pendingInvestors;
+            this.money = 0;
+            this.businessLevel = 1;
+            this.inventory = {};
+            this.stations = [];
+            this.scrollX = 0;
+            this.setupStations();
+            this.generateControls();
+            this.updateUI();
+            this.saveGame();
+            alert(`Sold! You now have ${this.investors} Investors giving a +${(this.investors*10).toFixed(0)}% bonus.`);
+        }
+    }
     unlockNextBusiness() {
         const cost = 2000;
         if (this.money >= cost && this.businessLevel === 1) {
@@ -267,6 +290,10 @@ class Game {
     }
     updateUI() {
         document.getElementById('money-display').textContent = '$' + Math.floor(this.money).toLocaleString();
+        document.getElementById('investor-count').textContent = this.investors;
+        document.getElementById('investor-bonus').textContent = `+${(this.investors * 10)}%`;
+        const mult = 1 + (this.investors * 0.1);
+        document.getElementById('multiplier-display').textContent = mult.toFixed(1);
         this.stations.forEach((s, i) => {
             const hireButton = document.getElementById(`hire-${i}`);
             if (hireButton) {
@@ -296,10 +323,23 @@ class Game {
             nextButton.textContent.textContent = "Max Business Reached";
             nextButton.disabled = true;
         }
+        const pendingInvestors = Math.floor(this.money / 50000);
+        const prestigeButton = document.getElementById('prestige-button');
+        if (pendingInvestors > 0) {
+            prestigeButton.disabled = false;
+            prestigeButton.textContent = `Sell & gain ${pendingInvestors} investors`;
+            document.getElementById('prestige-preview').textContent = "Click to Restart with bonus";
+        } else {
+            prestigeButton.disabled = false;
+            prestigeButton.textContent = "Sell Company";
+            document.getElementById('prestige-preview').textContent = `Need $${(50000 - this.money).toLocaleString()} more value`;
+
+        }
     }
     saveGame() {
         const data = {
             money: this.money,
+            investors: this.investors,
             businessLevel: this.businessLevel,
             inventory: this.inventory,
             stations: this.stations.map(s => ({
@@ -316,8 +356,10 @@ class Game {
             try {
                 const data = JSON.parse(saveString);
                 this.money = data.money || 0;
+                this.investors = data.investors || 0;
                 this.businessLevel = data.businessLevel || 1;
                 this.inventory = data.inventory || {};
+                if (this.businessLevel !== 1) this.setupStations();
                 this.setupStations();
                 if (data.stations) {
                     data.stations.forEach((saved, i) => {
@@ -327,14 +369,36 @@ class Game {
                         }
                     });
                 }
+                if (data.lastSaveTime) {
+                    this.calculateOfflineEarnings(data.lastSaveTime);
+                }
             } catch (e) {
                 console.error("Save file corrupted, resetting.", e);
             }
         }
     }
-    resetGame() {
-        localStorage.removeItem('tycoonSave');
-        location.reload();
+    calculateOfflineEarnings(lastSaveTime) {
+        const now = Date.now();
+        const diffSeconds = (now - lastSaveTime) / 1000;
+        if (diffSeconds > 10) {
+            const moneyStation = this.stations[this.stations.length - 1];
+            if (moneyStation && moneyStation.hasManager) {
+                const speed = moneyStation.getSpeed();
+                const itemsPerSec = (speed * 60) / 100;
+                const revenuePerItem = moneyStation.calculateRevenue(this);
+                const earned = Math.floor(itemsPerSec * revenuePerItem * diffSeconds);
+                if (earned > 0) {
+                    this.money += earned;
+                    setTimeout(() => alert(`Welcome back! Your manager earned $${earned.toLocaleString()} while you were away.`), 500);
+                }
+            }
+        }
+    }
+    hardReset() {
+        if (confirm("Full reset: This deletes save, investors and everything. Sure?")) {
+            localStorage.removeItem('tycoonSaveV3');
+            location.reload();
+        }
     }
     animate() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);

@@ -24,8 +24,21 @@
             <div class="business-panel">
                 <span>Expand business</span>
                 <button class="next-biz-button" id="next-biz-button" onclick="game.unlockNextBusiness()">
-                    Unlock Burger Joint ($2000)
+                    Unlock Next business
                 </button>
+                <div style="background: #34495e; padding: 10px; border-radius: 8px;">
+                    <h4 style="color:#f1c40f; margin-top:0;">Investors (Prestige)</h4>
+                    <div style="font-size: 0.9rem; margin-bottom: 10px;">
+                        Current Investors: <span id="investor-count" style="font-weight:bold; color:white;">0</span><br>
+                        Bonus: <span id="investor-bonus" style="color:#2ecc71;">+0%</span> Income
+                    </div>
+                    <button class="next-biz-button" id="prestige-button" onclick="game.doPrestige()" style="background: #f1c40f; color: #2c3e50; font-size: 0.9rem; padding: 8px;">
+                        Sell business & restart
+                    </button>
+                    <div id="prestige-preview" style="font-size: 0.8rem; margin-top: 5px; color: #bdc3c7;">
+                        (Need $50k to sell)
+                    </div>
+                </div>
                 <div style="margin-top: 15px; border-top: 1px solid #565252; padding-top: 10px;">
                     <button onclick="game.resetGame()" style="background:#c0392b; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
                         Reset Save
