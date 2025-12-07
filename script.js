@@ -1,5 +1,5 @@
 class Station {
-    constructor(id, name, x, y, type, color, inputName, outputName) {
+    constructor(id, name, x, y, color, inputName, outputName) {
         this.id = id;
         this.name = name;
         this.x = x;
@@ -24,7 +24,7 @@ class Station {
             this.tryStartWork(game);
         }
         if (this.working) {
-            this.progress += this.speed * (1 + (this.level * 0.5));
+            this.progress += this.getSpeed();
             if (this.progress >= this.maxProgress) {
                 this.completeWork(game);
             }
@@ -64,43 +64,43 @@ class Station {
         const prestigeMult = 1 + (game.investors * 0.1);
         return baseValue * game.businessLevel * prestigeMult;
     }
-    draw(ctx) {
+    draw(ctx, scrollX) {
         const drawX = this.x + scrollX;
         if (drawX + this.w < 0 || drawX > ctx.canvas.width) return; 
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.fillRect(drawX, this.y, this.w, this.h);
 
         ctx.strokeStyle = "#354454";
         ctx.lineWidth = 3;
-        ctx.strokeRect(this.x, this.y, this.w, this.h);
+        ctx.strokeRect(drawX, this.y, this.w, this.h);
 
         ctx.fillStyle = "white";
         ctx.font = "bold 14px Calibri";
         ctx.textAlign = "center";
-        ctx.fillText(this.name, this.x + this.w/2, this.y + 20);
+        ctx.fillText(this.name, drawX + this.w/2, this.y + 20);
 
         ctx.font = "12px Calibri";
-        ctx.fillText(`Lvl: ${this.level}`, this.x + this.w/2, this.y + 85);
+        ctx.fillText(`Lvl: ${this.level}`, drawX + this.w/2, this.y + 85);
 
         ctx.font = "10px Calibri";
         ctx.fillStyle = "#e6dede";
-        ctx.fillText(`Speed: ${this.getSpeed().toFixed(1)}x`, this.x + this.w/2, this.y + 97)
+        ctx.fillText(`Speed: ${this.getSpeed().toFixed(1)}x`, drawX + this.w/2, this.y + 97)
         if (this.hasManager) {
             ctx.fillStyle = "#3498db";
             ctx.beginPath();
-            ctx.arc(this.x + this.w - 15, this.y + 15, 8, 0, Math.PI*2);
+            ctx.arc(drawX + this.w - 15, this.y + 15, 8, 0, Math.PI*2);
             ctx.fill();
             ctx.fillStyle = "white";
             ctx.font = "10px Arial";
-            ctx.fillText("M", this.x + this.w - 15, this.y + 18);
+            ctx.fillText("M", drawX + this.w - 15, this.y + 18);
         }
         ctx.fillStyle = "#4d4a4a";
-        ctx.fillRect(this.x + 10, this.y + 40, this.w - 20, 10);
+        ctx.fillRect(drawX + 10, this.y + 40, this.w - 20, 10);
         ctx.fillStyle = this.working ? "#2ecc71" : "#7f8c8d";
         const pct = Math.min(1, this.progress / this.maxProgress);
-        ctx.fillRect(this.x + 10, this.y + 40, (this.w - 20) * pct, 10);
+        ctx.fillRect(drawX + 10, this.y + 40, (this.w - 20) * pct, 10);
     }
-    isClicked(mx, my) {
+    isClicked(mx, my, scrollX) {
         const worldMx = mx - scrollX;
         return worldMx >= this.x && worldMx <= this.x + this.w && my >= this.y && my <= this.y + this.h;
     }
@@ -121,13 +121,13 @@ class Game {
             patty: 0,
             burger: 0
         };
-        this.loadGame();
         this.stations = [];
+        this.loadGame();
         this.particles = [];
         this.tutorialActive = false;
         this.tutorialStep = 0;
         this.tutorialComplete = false;
-        this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
         window.addEventListener('mousemove', (e) => this.onMouseMove(e));
         window.addEventListener('mouseup', () => this.onMouseUp());
         setInterval(() => this.saveGame(), 5000);
@@ -257,13 +257,17 @@ class Game {
         this.isDragging = false;
         this.lastMouseX = e.clientX;
         let clickedStation = false;
-        this.stations.forEach(s => {
-            clickedStation = true;
-            const started = s.tryStartWork(this);
-            if (started) {
+        for (let i = 0; i < this.stations.length; i++) {
+            const s = this.stations[i];
+            if (s.isClicked(mx, my, this.scrollX)) {
+                clickedStation = true;
+                const started = s.tryStartWork(this);
+                if (started) {
                     this.spawnFloater(s.x + s.w/2 + this.scrollX, s.y, "Click!", "#ffffff");
                 }
-        });
+                break;
+            }
+        }
         if (!clickedStation) {
             this.isDragging = true;
         }
@@ -286,7 +290,7 @@ class Game {
         this.money += amount;
         this.updateUI();
     }
-    spawnFloater(x, y, text) {
+    spawnFloater(x, y, text, color = '#ffffff') {
         this.particles.push({
             x: x, y: y, text: text, life: 60, color: color
         });
@@ -297,7 +301,7 @@ class Game {
         return Math.floor(50 * (i+1) * Math.pow(1.6, station.level) * this.businessLevel);
     }
     hireManager(i) {
-        const cost = this.getManagerCost(index);
+        const cost = this.getManagerCost(i);
         if (!this.stations[i].hasManager && this.money >= cost) {
             this.money -= cost;
             this.stations[i].hasManager = true;
@@ -307,7 +311,7 @@ class Game {
         
     }
     upgradeStation(i) {
-        const cost = this.getUpgradeCost(index);
+        const cost = this.getUpgradeCost(i);
         if (this.money >= cost) {
             this.money -= cost;
             this.stations[i].level++;
@@ -367,9 +371,9 @@ class Game {
             const upgradeButton = document.getElementById(`upgrade-${i}`);
             if (upgradeButton) {
                 const cost = this.getUpgradeCost(i);
-                uButton.disabled = this.money < cost;
-                uButton.querySelector('.button-cost').textContent = `$${Math.floor(cost).toLocaleString()}`;
-                uButton.querySelector('.button-label').textContent = `${s.name} (Level ${s.level})`;
+                upgradeButton.disabled = this.money < cost;
+                upgradeButton.querySelector('.button-cost').textContent = `$${Math.floor(cost).toLocaleString()}`;
+                upgradeButton.querySelector('.button-label').textContent = `${s.name} (Level ${s.level})`;
             }
         });
         const nextButton = document.getElementById('next-biz-button');
@@ -404,6 +408,7 @@ class Game {
                 hasManager: s.hasManager
             }))
         };
+        data.lastSaveTime = Date.now();
         localStorage.setItem('tycoonSave', JSON.stringify(data));
     }
     loadGame() {
