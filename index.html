@@ -41,9 +41,19 @@
                 </div>
                 <div style="margin-top: 15px; border-top: 1px solid #565252; padding-top: 10px;">
                     <button onclick="game.resetGame()" style="background:#c0392b; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">
-                        Reset Save
+                        Hard reset: (wipe save)
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+    <div id="tutorial-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Welcome!</h2>
+            <p>Looks like you are new to the business, want a tutorial?</p>
+            <div class="modal-actions">
+                <button onclick="game.startTutorial()" class="button-primary">Yes, teach me!</button>
+                <button onclick="game.skipTutorial()" class="button-secondary">Nah, I'm a pro.</button>
             </div>
         </div>
     </div>

@@ -48,10 +48,12 @@ class Station {
         this.working = false;
         this.progress = 0;
         if (this.outputName === 'money') {
-            const baseValue = 10 * Math.pow(1.5, this.id);
-            const revenue = baseValue * game.businessLevel;
+            const revenue = this.calculateRevenue(game);
             game.addMoney(revenue);
-            game.spawnFloater(this.x + this.w/2, this.y, `+$${revenue.toFixed(0)}`);
+            game.spawnFloater(this.x + this.w/2, this.y, `+$${Math.floor(revenue).toLocaleString()}`);
+            if (game.tutorialActive && game.tutorialStep === 3) {
+                game.nextTutorialStep();
+            }
         } else {
             game.inventory[this.outputName] = (game.inventory[this.outputName] || 0) + 1;
             game.spawnFloater(this.x + this.w/2, this.y, `+1 ${this.outputName}`);
@@ -122,6 +124,9 @@ class Game {
         this.loadGame();
         this.stations = [];
         this.particles = [];
+        this.tutorialActive = false;
+        this.tutorialStep = 0;
+        this.tutorialComplete = false;
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
         window.addEventListener('mousemove', (e) => this.onMouseMove(e));
         window.addEventListener('mouseup', () => this.onMouseUp());
@@ -130,6 +135,58 @@ class Game {
         requestAnimationFrame(this.animate);
         this.generateControls();
         this.updateUI();
+        if (!this.tutorialComplete) {
+            this.showTutorialPrompt();
+        }
+    }
+    showTutorialPrompt() {
+        document.getElementById('tutorial-modal').style.display = 'flex';
+    }
+    startTutorial() {
+        document.getElementById('tutorial-modal').style.display = 'none';
+        this.tutorialActive = true;
+        this.tutorialStep = 1;
+        this.money = 0;
+        this.updateTutorialUI();
+    }
+    skipTutorial() {
+        document.getElementById('tutorial-modal').style.display = 'none';
+        this.tutorialComplete = true;
+        this.saveGame();
+    }
+    nextTutorialStep() {
+        this.tutorialStep++;
+        if (this.tutorialStep > 4) {
+            this.finishTutorial();
+        } else {
+            this.updateTutorialUI();
+        }
+    }
+    finishTutorial() {
+        this.tutorialActive = false;
+        this.tutorialComplete = true;
+        this.tooltip.style.display = 'none';
+        this.spawnFloater(400, 150, "Tutorial complete!", "#f1c40f");
+        this.saveGame();
+    }
+    updateTutorialUI() {
+        if (!this.tutorialActive) return;
+        this.tooltip.style.display = 'block';
+        switch(this.tutorialStep) {
+            case 1:
+                this.tooltipText.textContent = "Click the Picker to harvest lemons!";
+                break;
+            case 2:
+                this.tooltipText.textContent = "Good! Now click the squeezer to make juice.";
+                break;
+            case 3:
+                this.tooltipText.textContent = "Keep clicking subsequent stations to sell lemonade!";
+                break;
+            case 4:
+                this.tooltipText.textContent = "Great job! Use money to Hire Managers below to automate clicks.";
+                setTimeout(() => this.finishTutorial(), 4000);
+                break;
+        }
     }
     setupStations() {
         const gap = 180;
@@ -443,6 +500,25 @@ class Game {
                 }
             }
         });
+        if (this.tutorialActive && this.tutorialStep <= 3) {
+            let targetIndex = -1;
+            if (this.tutorialStep === 1) targetIndex = 0;
+            if (this.tutorialStep === 2) targetIndex = 1;
+            if (this.tutorialStep === 3) targetIndex = -1;
+            if (targetIndex >= 0) {
+                const tS = this.stations[targetIndex];
+                const drawX = tS.x + this.scrollX;
+                this.ctx.strokeStyle = `rgba(241, 196, 15, ${(Math.sin(Date.now()/200)+1)/2})`;
+                this.ctx.lineWidth = 5;
+                this.ctx.strokeRect(drawX - 5, tS.y - 5, tS.w + 10, tS.h + 10);
+                const canvasRect = this.canvas.getBoundingClientRect();
+                this.tooltip.style.left = (drawX + tS.w/2) + 'px';
+                this.tooltip.style.top = (tS.y - 10) + 'px';
+            } else if (this.tutorialStep === 3) {
+                this.tooltip.style.left = '400px';
+                this.tooltip.style.top = '100px';
+            }
+        }
         this.stations.forEach(s => s.draw(this.ctx, this.scrollX));
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
