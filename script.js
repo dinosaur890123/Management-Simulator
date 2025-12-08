@@ -153,6 +153,19 @@ class Game {
             this.showTutorialPrompt();
         }
     }
+    hasResearch(id) {
+        return this.purchasedResearch.includes(id);
+    }
+    buyResearch(id) {
+        const item = this.researchTree.find(r => r.id === id);
+        if (item && !this.hasResearch(id) && this.money >= item.cost) {
+            this.money -= item.cost;
+            this.purchasedResearch.push(id);
+            this.spawnFloater(400, 150, "RESEARCH COMPLETE!", "#8e44ad");
+            this.updateUI();
+            this.saveGame();
+        }
+    }
     showTutorialPrompt() {
         document.getElementById('tutorial-modal').style.display = 'flex';
     }
@@ -232,6 +245,7 @@ class Game {
         const managerDiv = document.createElement('div');
         managerDiv.className = 'station-control-group';
         managerDiv.innerHTML = '<h3>Hire Managers</h3>';
+
         const upgradeDiv = document.createElement('div');
         upgradeDiv.className = 'station-control-group';
         upgradeDiv.innerHTML = '<h3>Upgrades</h3>';
@@ -261,8 +275,26 @@ class Game {
             `;
             upgradeDiv.appendChild(uButton);
         });
+        constresearchDiv = document.createElement('div');
+        researchDiv.className = 'station-control-group research-group';
+        researchDiv.innerHTML = '<h3>Research Lab</h3>';
+        this.researchTree.forEach(res => {
+            const rButton = document.createElement('button');
+            rButton.className = 'upgrade-button research-button';
+            rButton.id = `res-${res.id}`;
+            rButto.onclick = () => this.buyResearch(res.id);
+            rButton.innerHTML = `
+            <div>
+                <div class="button-label">${res.name}</div>
+                <div class="button-sub">${res.desc}</div>
+            </div>
+            <div class="button-cost">$${res.cost.toLocaleString()}</div>
+            `;
+            researchDiv.appendChild(rButton);
+        });
         container.appendChild(managerDiv);
         container.appendChild(upgradeDiv);
+        container.appendChild(researchDiv);
     }
     onMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
@@ -309,7 +341,12 @@ class Game {
             x: x, y: y, text: text, life: 60, color: color
         });
     }
-    getManagerCost(i) {return (100 * (i+1)) * Math.pow(1.5, i) * this.businessLevel;}
+    getManagerCost(i) {
+        let cost = (100 * (i+1)) * Math.pow(1.5, i) * this.businessLevel;
+        if (this.hasResearch('hiring_1')) cost *= 0.8;
+        return cost;
+        
+    }
     getUpgradeCost(i) {
         const station = this.stations[i];
         return Math.floor(50 * (i+1) * Math.pow(1.6, station.level) * this.businessLevel);
@@ -343,11 +380,12 @@ class Game {
             this.inventory = {};
             this.stations = [];
             this.scrollX = 0;
+            this.purchasedResearch = [];
             this.setupStations();
             this.generateControls();
             this.updateUI();
             this.saveGame();
-            alert(`Sold! You now have ${this.investors} Investors giving a +${(this.investors*10).toFixed(0)}% bonus.`);
+            alert(`Sold! You now have ${this.investors} Investors.`);
         }
     }
     unlockNextBusiness() {
@@ -390,6 +428,19 @@ class Game {
                 upgradeButton.querySelector('.button-label').textContent = `${s.name} (Level ${s.level})`;
             }
         });
+        this.researchTree.forEach(res => {
+            const button = document.getElementById(`res-${res.id}`);
+            if (button) {
+                if (this.hasResearch(res.id)) {
+                    button.disabled = true;
+                    button.querySelector('.button-cost').textContent = "RESEARCHED";
+                    button.style.background = "#f4eaf7";
+                    button.style.borderColor = "#9b59b6";
+                } else {
+                    button.disabled = this.money < res.cost;
+                }
+            }
+        });
         const nextButton = document.getElementById('next-biz-button');
         if (this.businessLevel === 1) {
             nextButton.textContent = "Unlock Burger Empire ($10,000)";
@@ -417,13 +468,15 @@ class Game {
             investors: this.investors,
             businessLevel: this.businessLevel,
             inventory: this.inventory,
+            tutorialComplete: this.tutorialComplete,
+            purchasedResearch: this.purchasedResearch,
             stations: this.stations.map(s => ({
                 level: s.level,
                 hasManager: s.hasManager
-            }))
+            })),
+            lastSaveTime: Date.now()
         };
-        data.lastSaveTime = Date.now();
-        localStorage.setItem('tycoonSave', JSON.stringify(data));
+        localStorage.setItem('tycoonSaveV3', JSON.stringify(data));
     }
     loadGame() {
         const saveString = localStorage.getItem('tycoonSave');
@@ -435,6 +488,8 @@ class Game {
                 this.investors = data.investors || 0;
                 this.businessLevel = data.businessLevel || 1;
                 this.inventory = data.inventory || {};
+                this.tutorialComplete = data.tutorialComplete || false;
+                this.purchasedResearch = data.purchasedResearch || [];
                 if (this.businessLevel !== 1) this.setupStations();
                 this.setupStations();
                 if (data.stations) {
@@ -459,7 +514,7 @@ class Game {
         if (diffSeconds > 10) {
             const moneyStation = this.stations[this.stations.length - 1];
             if (moneyStation && moneyStation.hasManager) {
-                const speed = moneyStation.getSpeed();
+                const speed = moneyStation.getSpeed(this);
                 const itemsPerSec = (speed * 60) / 100;
                 const revenuePerItem = moneyStation.calculateRevenue(this);
                 const earned = Math.floor(itemsPerSec * revenuePerItem * diffSeconds);
