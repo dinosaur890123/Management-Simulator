@@ -17,7 +17,10 @@ class Station {
         this.outputName = outputName; 
     }
     getSpeed() {
-        return 2 * (1 + (this.level - 1) * 0.2);
+        let speed = 2 * (1 + (this.level - 1) * 0.25);
+        if (game.hasResearch('speed_1')) speed *= 1.1;
+        if (game.hasResearch('speed_2')) speed *= 1.25;
+        return speed;
     }
     tick(game) {
         if (this.hasManager && !this.working) {
@@ -62,7 +65,10 @@ class Station {
     calculateRevenue(game) {
         const baseValue = 10 * Math.pow(1.5, this.id);
         const prestigeMult = 1 + (game.investors * 0.1);
-        return baseValue * game.businessLevel * prestigeMult;
+        let researchMult = 1.0;
+        if (game.hasResearch('profit_1')) researchMult *= 1.15;
+        if (game.hasResearch('profit_2')) researchMult *= 1.50;
+        return baseValue * game.businessLevel * prestigeMult * researchMult;
     }
     draw(ctx, scrollX) {
         const drawX = this.x + scrollX;
@@ -124,6 +130,14 @@ class Game {
         this.stations = [];
         this.loadGame();
         this.particles = [];
+        this.purchasedResearch = [];
+        this.researchTree = [
+            {id: 'profit_1', name: "Marketing campaign", cost: 500, desc: "Global Income x1.15"},
+            {id: 'speed_1', name: "Better Equipment", cost: 1200, desc: "All Stations Speed x1.1"},
+            {id: 'hiring_1', name: "Recruiter", cost: 2500, desc: "Managers Cost -20%"},
+            {id: 'profit_2', name: "TV Commercial", cost: 10000, desc: "Global income x1.5"},
+            {id: 'speed_2', name: "Robotic Arms", cost: 25000, desc: "All stations speed x1.25"}
+        ]
         this.tutorialActive = false;
         this.tutorialStep = 0;
         this.tutorialComplete = false;

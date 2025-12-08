@@ -43,14 +43,112 @@ h1 {
     color: var(--secondary); 
     font-size: 1.5rem;
 }
-.canvas-container {
+.canvas-wrapper {
     position: relative;
+    border-bottom: 2px solid var(--dark);
+}
+.canvas-container {
     background: #87CEEB;
-    cursor: pointer;
+    cursor: grab;
+    overflow: hidden;
+}
+.canvas-container:active {
+    cursor: grabbing;
+}
+.drag-hint {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.5);
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    pointer-events: none;
+    z-index: 5;
 }
 canvas {
     display: block;
     width: 100%;
+}
+.tutorial-tooltip {
+    position: absolute;
+    background: white;
+    border: 2px solid var(--primary);
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+    z-index: 20;
+    pointer-events: none;
+    white-space: nowrap;
+    font-weight: bold;
+    color: var(--dark);
+}
+.tutorial-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -8px;
+    border-width: 8px;
+    border-style: solid;
+    border-color: var(--primary) transparent transparent transparent;
+}
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 400px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+.modal-content h2 {
+    margin-top: 0;
+    color: var(--primary);
+    text-shadow: 1px 1px 0 #bdc3c7;
+}
+.modal-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+.button-primary {
+    background: var(--secondary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+.button-secondary {
+    background: #bdc3c7;
+    color: var(--dark);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+.station-control-group {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #cecdcd;
 }
 .controls {
     padding: 20px;
@@ -121,4 +219,25 @@ h3 {
 .next-biz-button:disabled {
     background: #7f8c8d;
     cursor: not-allowed;
+}
+.danger-button {
+    background: #c0392b;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.danger-button:hover {
+    background: #e74c3c;
+}
+.dynamic-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+@media (max-width: 600px) {
+    .dynamic-grid {grid-template-columns: 1fr;}
 }
