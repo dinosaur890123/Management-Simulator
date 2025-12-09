@@ -4,6 +4,7 @@
     --dark: #2c3e50;
     --light: #ecf0f1;
     --accent: #e67e22;
+    --research: #8e44ad;
 }
 body {
     font-family: Calibri;
@@ -149,6 +150,14 @@ canvas {
     padding: 15px;
     border-radius: 8px;
     border: 1px solid #cecdcd;
+}
+.research-group {
+    grid-column: 1 / -1;
+    border-color: var(--research);
+}
+.research-group h3 {
+    border-color: var(--research);
+    color: var(--research);
 }
 .controls {
     padding: 20px;

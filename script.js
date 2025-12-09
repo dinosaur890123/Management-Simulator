@@ -129,6 +129,7 @@ class Game {
         };
         this.stations = [];
         this.loadGame();
+        this.goldenLemon = null;
         this.particles = [];
         this.purchasedResearch = [];
         this.researchTree = [
@@ -152,6 +153,29 @@ class Game {
         if (!this.tutorialComplete) {
             this.showTutorialPrompt();
         }
+    }
+    spawnGoldenLemon() {
+        this.goldenLemon = {
+            x: -50,
+            y: 50 + Math.random() * 200,
+            r: 30,
+            speed: 1 + Math.random() * 1.5,
+            rot: 0,
+            rotSpeed: (Math.random() - 0.5) * 0.1
+        };
+    }
+    clickGoldenLemon() {
+        let mps = 0;
+        const lastStation = this.stations[this.stations.length - 1];
+        if (lastStation) {
+            const speed = lastStation.getSpeed(this);
+            const rev = lastStation.calculateRevenue(this);
+            mps = (speed * 0.6) * rev; 
+        }
+        const reward = Math.max(500, mps * 60);
+        this.addMoney(reward);
+        this.spawnFloater(this.goldenLemon.x, this.goldenLemon.y, `GOLDEN LEMON! +$${Math.floor(reward).toLocaleString()}`, "#f1c40f")
+        this.goldenLemon = null;
     }
     hasResearch(id) {
         return this.purchasedResearch.includes(id);
@@ -535,6 +559,13 @@ class Game {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = this.businessLevel === 1 ? "#ecf0f1" : "#5d4037";
         this.ctx.fillRect(0, 200, this.canvas.width, 100);
+        if (!this.goldenLemon) {
+            if (Math.random() < 0.0003) this.spawnGoldenLemon();
+        } else {
+            this.goldenLemon.x += this.goldenLemon.speed;
+            this.goldenLemon.rot += this.goldenLemon.rotSpeed;
+            if (this.goldenLemon.x > this.canvas.width + 100) this.goldenLemon = null;
+        }
         this.ctx.strokeStyle = "rgba(0,0,0,0.1)";
         this.ctx.beginPath();
         for (let i=0; i<20; i++) {
@@ -594,6 +625,18 @@ class Game {
             }
         }
         this.stations.forEach(s => s.draw(this.ctx, this.scrollX));
+        if (this.goldenLemon) {
+            this.ctx.save();
+            this.ctx.translate(this.goldenLemon.x, this.goldenLemon.y);
+            this.ctx.rotate(this.goldenLemon.rot);
+            this.ctx.shadowBlur = 20;
+            this.ctx.shadowColor = "#f1c40f";
+            this.ctx.font = "50px Calibri";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText("🍋", 0, 0);
+            this.ctx.restore();
+        }
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
             const drawX = p.x;
