@@ -12,12 +12,18 @@ class Station {
         this.working = false;
         this.speed = 2;
         this.level = 1;
-        this.hasManager = false;
+        this.managerLevel = 0;
         this.inputName = inputName;
         this.outputName = outputName; 
     }
+    get hasManager() {
+        return this.managerLevel > 0;
+    }
     getSpeed() {
         let speed = 2 * (1 + (this.level - 1) * 0.25);
+        if (this.managerLevel > 1) {
+            speed *= (1 + (this.managerLevel - 1) * 0.1);
+        }
         if (game.hasResearch('speed_1')) speed *= 1.1;
         if (game.hasResearch('speed_2')) speed *= 1.25;
         return speed;
@@ -68,6 +74,7 @@ class Station {
         let researchMult = 1.0;
         if (game.hasResearch('profit_1')) researchMult *= 1.15;
         if (game.hasResearch('profit_2')) researchMult *= 1.50;
+        const businessMult = Math.pow(4, game.businessLevel - 1);
         return baseValue * game.businessLevel * prestigeMult * researchMult;
     }
     draw(ctx, scrollX) {
@@ -92,13 +99,18 @@ class Station {
         ctx.fillStyle = "#e6dede";
         ctx.fillText(`Speed: ${this.getSpeed().toFixed(1)}x`, drawX + this.w/2, this.y + 97)
         if (this.hasManager) {
-            ctx.fillStyle = "#3498db";
+            let badgeColor = "#3498db";
+            if (this.managerLevel >= 5) badgeColor = "#9b59b6";
+            if (this.managerLevel >= 10) badgeColor = "#e67e22";
+            if (this.managerLevel >= 20) badgeColor = "#f1c40f";
+            ctx.fillStyle = badgeColor;
             ctx.beginPath();
             ctx.arc(drawX + this.w - 15, this.y + 15, 8, 0, Math.PI*2);
             ctx.fill();
             ctx.fillStyle = "white";
-            ctx.font = "10px Arial";
-            ctx.fillText("M", drawX + this.w - 15, this.y + 18);
+            ctx.font = "10px Calibri";
+            const txt = this.managerLevel > 1 ? this.managerLevel : "M";
+            ctx.fillText(txt, drawX + this.w - 15, this.y + 18);
         }
         ctx.fillStyle = "#4d4a4a";
         ctx.fillRect(drawX + 10, this.y + 40, this.w - 20, 10);
@@ -261,6 +273,15 @@ class Game {
                 new Station(4, "Drive-Thru", 50 + gap*4, y, "#27ae60", "burger", "money")
             ];
             this.stations[3].inputName = "patty";
+        } else if (this.businessLevel === 3) {
+            document.getElementById('business-name').textContent = "Car Factory";
+            this.stations = [
+                new Station(0, "Steel Mill", 50, y, "#7f8c8d", null, "steel"),
+                new Station(1, "Parts Plant", 50 + gap, y, "#2980b9", "steel", "parts"),
+                new Station(2, "Engine Lab", 50 + gap*2, y, "#c0392b", "parts", "engine"),
+                new Station(3, "Assembly", 50 + gap*3, y, "#e67e22", "engine", "car"),
+                new Station(4, "Dealership", 50 + gap*4, y, "#27ae60", "car", "money"),
+            ];
         }
     }
     generateControls() {
@@ -326,6 +347,14 @@ class Game {
         const my = e.clientY - rect.top;
         this.isDragging = false;
         this.lastMouseX = e.clientX;
+        if (this.goldenLemon) {
+            const dx = mx - this.goldenLemon.x;
+            const dy = my - this.goldenLemon.y;
+            if (dx*dx + dy*dy < this.goldenLemon.r * this.goldenLemon.r) {
+                this.clickGoldenLemon();
+                return;
+            }
+        }
         let clickedStation = false;
         for (let i = 0; i < this.stations.length; i++) {
             const s = this.stations[i];
@@ -334,6 +363,10 @@ class Game {
                 const started = s.tryStartWork(this);
                 if (started) {
                     this.spawnFloater(s.x + s.w/2 + this.scrollX, s.y, "Click!", "#ffffff");
+                    if (this.tutorialActive) {
+                        if (this.tutorialStep === 1 && index === 0) this.nextTutorialStep();
+                        else if (this.tutorialStep === 2 && index === 1) this.nextTutorialStep();
+                    }
                 }
                 break;
             }
@@ -367,6 +400,9 @@ class Game {
     }
     getManagerCost(i) {
         let cost = (100 * (i+1)) * Math.pow(1.5, i) * this.businessLevel;
+        if (station.managerLevel > 0) {
+            baseCost = baseCost * 2 * Math.pow(1.5, station.managerLevel);
+        }
         if (this.hasResearch('hiring_1')) cost *= 0.8;
         return cost;
         
@@ -382,6 +418,9 @@ class Game {
             this.stations[i].hasManager = true;
             this.updateUI();
             this.saveGame();
+            if (this.stations[i].managerLevel > 1) {
+                this.spawnFloater(400, 150, "MANAGER PROMOTED!", "#3498db");
+            }
         }
         
     }
@@ -405,6 +444,7 @@ class Game {
             this.stations = [];
             this.scrollX = 0;
             this.purchasedResearch = [];
+            this.goldenLemon = null;
             this.setupStations();
             this.generateControls();
             this.updateUI();
@@ -414,9 +454,12 @@ class Game {
     }
     unlockNextBusiness() {
         const cost = 2000;
+        let targetLevel = this.businessLevel + 1;
+        if (this.businessLevel === 1) cost = 10000;
+        else if (this.businessLevel === 2) cost = 250000;
         if (this.money >= cost && this.businessLevel === 1) {
             this.money -= cost;
-            this.businessLevel = 2;
+            this.businessLevel = targetLevel;
             this.inventory = {}; 
             this.setupStations();
             this.generateControls();
@@ -435,21 +478,24 @@ class Game {
             const hireButton = document.getElementById(`hire-${i}`);
             if (hireButton) {
                 const cost = this.getManagerCost(i);
+                let label = `Hire ${s.name}`;
+                let sub = "Auto-work";
                 if (s.hasManager) {
-                    hireButton.disabled = true;
-                    hireButton.querySelector('.button-cost').textContent = "OWNED";
+                    label = `Promote (Lvl ${s.managerLevel})`;
+                    sub = "+10% Speed";
                     hireButton.style.background = "#e1f7d5";
                 } else {
-                    hireButton.disabled = this.money < cost;
-                    hireButton.querySelector('.button-cost').textContent = `$${Math.floor(cost).toLocaleString()}`;
+                    hireButton.style.background = "white";
                 }
+                hireButton.innerHTML = `<div><div class="btn-label">${label}</div><div class="btn-sub">${sub}</div></div><div class="btn-cost">$${cost.toLocaleString()}</div>`;
+                hireButton.disabled = this.money < cost;
             }
+            
             const upgradeButton = document.getElementById(`upgrade-${i}`);
             if (upgradeButton) {
                 const cost = this.getUpgradeCost(i);
                 upgradeButton.disabled = this.money < cost;
-                upgradeButton.querySelector('.button-cost').textContent = `$${Math.floor(cost).toLocaleString()}`;
-                upgradeButton.querySelector('.button-label').textContent = `${s.name} (Level ${s.level})`;
+                upgradeButton.innerHTML = `<div><div class="button-label">${s.name} Mk.II</div><div class="button-sub">Speed x1.25</div></div><div class="button-cost">$${cost.toLocaleString()}</div>`;
             }
         });
         this.researchTree.forEach(res => {
@@ -469,6 +515,9 @@ class Game {
         if (this.businessLevel === 1) {
             nextButton.textContent = "Unlock Burger Empire ($10,000)";
             nextButton.disabled = this.money < 10000;
+        } else if (this.businessLevel === 2) {
+            nextButton.textContent = "Unlock Car Factory ($250,000)";
+            nextButton.disabled = this.money < 250000;
         } else {
             nextButton.textContent.textContent = "Max Business Reached";
             nextButton.disabled = true;
@@ -496,7 +545,7 @@ class Game {
             purchasedResearch: this.purchasedResearch,
             stations: this.stations.map(s => ({
                 level: s.level,
-                hasManager: s.hasManager
+                managerLevel: s.managerLevel
             })),
             lastSaveTime: Date.now()
         };
@@ -520,7 +569,11 @@ class Game {
                     data.stations.forEach((saved, i) => {
                         if (this.stations[i]) {
                             this.stations[i].level = saved.level;
-                            this.stations[i].hasManager = saved.hasManager;
+                            if (saved.hasManager && !saved.managerLevel) {
+                                this.stations[i].managerLevel = 1;
+                            } else {
+                                this.stations[i].managerLevel = saved.managerLevel || 0;
+                            }
                         }
                     });
                 }
