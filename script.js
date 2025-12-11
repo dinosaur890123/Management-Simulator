@@ -516,11 +516,15 @@ class Game {
         }
     }
     updateUI() {
-        document.getElementById('money-display').textContent = '$' + Math.floor(this.money).toLocaleString();
-        document.getElementById('investor-count').textContent = this.investors;
-        document.getElementById('investor-bonus').textContent = `+${(this.investors * 10)}%`;
+        const moneyDisplay = document.getElementById('money-display');
+        if (moneyDisplay) moneyDisplay.textContent = '$' + Math.floor(this.money).toLocaleString();
+        const investorCount = document.getElementById('investor-count');
+        if (investorCount) investorCount.textContent = this.investors;
+        const investorBonus = document.getElementById('investor-bonus');
+        if (investorBonus) investorBonus.textContent = `+${(this.investors * 10)}%`;
         const mult = 1 + (this.investors * 0.1);
-        document.getElementById('multiplier-display').textContent = mult.toFixed(1);
+        const multiplierDisplay = document.getElementById('multiplier-display');
+        if (multiplierDisplay) multiplierDisplay.textContent = mult.toFixed(1);
         this.stations.forEach((s, i) => {
             const hireButton = document.getElementById(`hire-${i}`);
             if (hireButton) {
