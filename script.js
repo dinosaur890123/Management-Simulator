@@ -19,7 +19,7 @@ class Station {
     get hasManager() {
         return this.managerLevel > 0;
     }
-    getSpeed() {
+    getSpeed(game) {
         let speed = 2 * (1 + (this.level - 1) * 0.25);
         if (this.managerLevel > 1) {
             speed *= (1 + (this.managerLevel - 1) * 0.1);
@@ -33,7 +33,7 @@ class Station {
             this.tryStartWork(game);
         }
         if (this.working) {
-            this.progress += this.getSpeed();
+            this.progress += this.getSpeed(game);
             if (this.progress >= this.maxProgress) {
                 this.completeWork(game);
             }
@@ -78,7 +78,7 @@ class Station {
         const businessMult = Math.pow(4, game.businessLevel - 1);
         return baseValue * game.businessLevel * prestigeMult * researchMult * achievementBonus;
     }
-    draw(ctx, scrollX) {
+    draw(ctx, scrollX, game) {
         const drawX = this.x + scrollX;
         if (drawX + this.w < 0 || drawX > ctx.canvas.width) return; 
         ctx.fillStyle = this.color;
@@ -98,7 +98,7 @@ class Station {
 
         ctx.font = "10px Calibri";
         ctx.fillStyle = "#e6dede";
-        ctx.fillText(`Speed: ${this.getSpeed().toFixed(1)}x`, drawX + this.w/2, this.y + 97)
+        ctx.fillText(`Speed: ${this.getSpeed(game).toFixed(1)}x`, drawX + this.w/2, this.y + 97)
         if (this.hasManager) {
             let badgeColor = "#3498db";
             if (this.managerLevel >= 5) badgeColor = "#9b59b6";
@@ -559,27 +559,32 @@ class Game {
             }
         });
         const nextButton = document.getElementById('next-biz-button');
-        if (this.businessLevel === 1) {
-            nextButton.textContent = "Unlock Burger Empire ($10,000)";
-            nextButton.disabled = this.money < 10000;
-        } else if (this.businessLevel === 2) {
-            nextButton.textContent = "Unlock Car Factory ($250,000)";
-            nextButton.disabled = this.money < 250000;
-        } else {
-            nextButton.textContent.textContent = "Max Business Reached";
-            nextButton.disabled = true;
+        if (nextButton) {
+            if (this.businessLevel === 1) {
+                nextButton.textContent = "Unlock Burger Empire ($10,000)";
+                nextButton.disabled = this.money < 10000;
+            } else if (this.businessLevel === 2) {
+                nextButton.textContent = "Unlock Car Factory ($250,000)";
+                nextButton.disabled = this.money < 250000;
+            } else {
+                nextButton.textContent = "Max Business Reached";
+                nextButton.disabled = true;
+            }
         }
         const pendingInvestors = Math.floor(this.money / 50000);
         const prestigeButton = document.getElementById('prestige-button');
-        if (pendingInvestors > 0) {
-            prestigeButton.disabled = false;
-            prestigeButton.textContent = `Sell & gain ${pendingInvestors} investors`;
-            document.getElementById('prestige-preview').textContent = "Click to Restart with bonus";
-        } else {
-            prestigeButton.disabled = false;
-            prestigeButton.textContent = "Sell Company";
-            document.getElementById('prestige-preview').textContent = `Need $${(50000 - this.money).toLocaleString()} more value`;
-
+        if (prestigeButton) {
+            if (pendingInvestors > 0) {
+                prestigeButton.disabled = false;
+                prestigeButton.textContent = `Sell & gain ${pendingInvestors} investors`;
+                const prestigePreview = document.getElementById('prestige-preview');
+                if (prestigePreview) prestigePreview.textContent = "Click to Restart with bonus";
+            } else {
+                prestigeButton.disabled = false;
+                prestigeButton.textContent = "Sell Company";
+                const prestigePreview = document.getElementById('prestige-preview');
+                if (prestigePreview) prestigePreview.textContent = `Need $${(50000 - this.money).toLocaleString()} more value`;
+            }
         }
     }
     saveGame() {
@@ -723,7 +728,7 @@ class Game {
                 this.tooltip.style.top = '100px';
             }
         }
-        this.stations.forEach(s => s.draw(this.ctx, this.scrollX));
+        this.stations.forEach(s => s.draw(this.ctx, this.scrollX, this));
         if (this.goldenLemon) {
             this.ctx.save();
             this.ctx.translate(this.goldenLemon.x, this.goldenLemon.y);
