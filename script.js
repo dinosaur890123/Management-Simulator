@@ -59,13 +59,13 @@ class Station {
         if (this.outputName === 'money') {
             const revenue = this.calculateRevenue(game);
             game.addMoney(revenue);
-            game.spawnFloater(this.x + this.w/2, this.y, `+$${Math.floor(revenue).toLocaleString()}`);
+            game.spawnFloater(this.x + this.w/2 + game.scrollX, this.y, `+$${Math.floor(revenue).toLocaleString()}`);
             if (game.tutorialActive && game.tutorialStep === 3) {
                 game.nextTutorialStep();
             }
         } else {
             game.inventory[this.outputName] = (game.inventory[this.outputName] || 0) + 1;
-            game.spawnFloater(this.x + this.w/2, this.y, `+1 ${this.outputName}`);
+            game.spawnFloater(this.x + this.w/2 + game.scrollX, this.y, `+1 ${this.outputName}`);
         }
     }
     calculateRevenue(game) {
@@ -128,6 +128,8 @@ class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
+        this.tooltip = document.getElementById('tutorial-tooltip');
+        this.tooltipText = document.getElementById('tutorial-text');
         this.scrollX = 0;
         this.isDragging = false;
         this.lastMouseX = 0;
@@ -178,6 +180,17 @@ class Game {
         if (!this.tutorialComplete) {
             this.showTutorialPrompt();
         }
+    }
+    getMousePos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY,
+            scaleX,
+            scaleY
+        };
     }
     getAchievementCount() {
         return this.achievements.filter(a => a.unlocked).length;
@@ -333,7 +346,7 @@ class Game {
             <div>
                 <div class="button-label">Hire ${s.name}</div>
                 <div class="button-sub">Auto-work</div>
-            <div>
+            </div>
             <div class="button-cost">...</div>
             `;
             managerDiv.appendChild(mButton);
@@ -383,9 +396,7 @@ class Game {
         container.appendChild(achDiv);
     }
     onMouseDown(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+        const { x: mx, y: my, scaleX } = this.getMousePos(e);
         this.isDragging = false;
         this.lastMouseX = e.clientX;
         if (this.goldenLemon) {
@@ -406,8 +417,8 @@ class Game {
                     this.stats.clicks++;
                     this.spawnFloater(s.x + s.w/2 + this.scrollX, s.y, "Click!", "#ffffff");
                     if (this.tutorialActive) {
-                        if (this.tutorialStep === 1 && index === 0) this.nextTutorialStep();
-                        else if (this.tutorialStep === 2 && index === 1) this.nextTutorialStep();
+                        if (this.tutorialStep === 1 && i === 0) this.nextTutorialStep();
+                        else if (this.tutorialStep === 2 && i === 1) this.nextTutorialStep();
                     }
                 }
                 break;
@@ -419,7 +430,8 @@ class Game {
     }
     onMouseMove(e) {
         if (this.isDragging) {
-            const dx = e.clientX - this.lastMouseX;
+            const { scaleX } = this.getMousePos(e);
+            const dx = (e.clientX - this.lastMouseX) * scaleX;
             this.scrollX += dx;
             const maxScroll = 0;
             const minScroll = -(this.stations.length * 180 + 100 - this.canvas.width);
@@ -446,7 +458,7 @@ class Game {
         const station = this.stations[i];
         let cost = (100 * (i+1)) * Math.pow(1.5, i) * this.businessLevel;
         if (station.managerLevel > 0) {
-            baseCost = baseCost * 2 * Math.pow(1.5, station.managerLevel);
+            cost = cost * 2 * Math.pow(1.5, station.managerLevel);
         }
         if (this.hasResearch('hiring_1')) cost *= 0.8;
         return cost;
@@ -458,15 +470,13 @@ class Game {
     }
     hireManager(i) {
         const cost = this.getManagerCost(i);
-        if (!this.stations[i].hasManager && this.money >= cost) {
+        if (this.money >= cost) {
             this.money -= cost;
             this.stations[i].managerLevel++;
             this.checkAchievements();
             this.updateUI();
             this.saveGame();
-            if (this.stations[i].managerLevel > 1) {
-                this.spawnFloater(400, 150, "MANAGER PROMOTED!", "#3498db");
-            }
+            this.spawnFloater(400, 150, this.stations[i].managerLevel > 1 ? "MANAGER PROMOTED!" : "MANAGER HIRED!", "#3498db");
         }
         
     }
@@ -499,11 +509,12 @@ class Game {
         }
     }
     unlockNextBusiness() {
-        const cost = 2000;
+        let cost = 2000;
         let targetLevel = this.businessLevel + 1;
         if (this.businessLevel === 1) cost = 10000;
         else if (this.businessLevel === 2) cost = 250000;
-        if (this.money >= cost && this.businessLevel === 1) {
+        else return;
+        if (this.money >= cost && this.businessLevel < 3) {
             this.money -= cost;
             this.businessLevel = targetLevel;
             this.inventory = {}; 
@@ -538,7 +549,7 @@ class Game {
                 } else {
                     hireButton.style.background = "white";
                 }
-                hireButton.innerHTML = `<div><div class="btn-label">${label}</div><div class="btn-sub">${sub}</div></div><div class="btn-cost">$${cost.toLocaleString()}</div>`;
+                hireButton.innerHTML = `<div><div class="button-label">${label}</div><div class="button-sub">${sub}</div></div><div class="button-cost">$${Math.floor(cost).toLocaleString()}</div>`;
                 hireButton.disabled = this.money < cost;
             }
             
@@ -608,7 +619,7 @@ class Game {
         localStorage.setItem('tycoonSaveV3', JSON.stringify(data));
     }
     loadGame() {
-        const saveString = localStorage.getItem('tycoonSave');
+        const saveString = localStorage.getItem('tycoonSaveV3');
         this.setupStations();
         if (saveString) {
             try {
@@ -619,17 +630,12 @@ class Game {
                 this.inventory = data.inventory || {};
                 this.tutorialComplete = data.tutorialComplete || false;
                 this.purchasedResearch = data.purchasedResearch || [];
-                if (this.businessLevel !== 1) this.setupStations();
                 this.setupStations();
                 if (data.stations) {
                     data.stations.forEach((saved, i) => {
                         if (this.stations[i]) {
-                            this.stations[i].level = saved.level;
-                            if (saved.hasManager && !saved.managerLevel) {
-                                this.stations[i].managerLevel = 1;
-                            } else {
-                                this.stations[i].managerLevel = saved.managerLevel || 0;
-                            }
+                            this.stations[i].level = saved.level || 1;
+                            this.stations[i].managerLevel = saved.managerLevel || 0;
                         }
                     });
                 }
@@ -640,6 +646,9 @@ class Game {
                 console.error("Save file corrupted, resetting.", e);
             }
         }
+    }
+    resetGame() {
+        this.hardReset();
     }
     calculateOfflineEarnings(lastSaveTime) {
         const now = Date.now();
@@ -732,6 +741,8 @@ class Game {
                 this.tooltip.style.top = '100px';
             }
         }
+
+        this.stations.forEach(s => s.tick(this));
         this.stations.forEach(s => s.draw(this.ctx, this.scrollX, this));
         if (this.goldenLemon) {
             this.ctx.save();
