@@ -74,8 +74,9 @@ class Station {
         let researchMult = 1.0;
         if (game.hasResearch('profit_1')) researchMult *= 1.15;
         if (game.hasResearch('profit_2')) researchMult *= 1.50;
+        const achievementBonus = 1 + (game.getAchievementCount() * 0.05);
         const businessMult = Math.pow(4, game.businessLevel - 1);
-        return baseValue * game.businessLevel * prestigeMult * researchMult;
+        return baseValue * game.businessLevel * prestigeMult * researchMult * achievementBonus;
     }
     draw(ctx, scrollX) {
         const drawX = this.x + scrollX;
@@ -142,15 +143,27 @@ class Game {
         this.stations = [];
         this.loadGame();
         this.goldenLemon = null;
+        this.stats = {
+            clicks: 0,
+            lifetimeEarnings: 0
+        };
         this.particles = [];
         this.purchasedResearch = [];
+        this.achievements = [
+            {id: 'click_1', name: "Finger workout", desc: "Click 50 times", unlocked: false, check: (g) => g.stats.clicks >= 50},
+            {id: 'money_1', name: "Small Business", desc: "Earn $10k Lifetime", unlocked: false, check: (g) => g.stats.lifetimeEarnings >= 10000},
+            {id: 'hire_1', name: "Delegator", desc: "Hire 3 Managers", unlocked: false, check: (g) => g.stations.filter(s => s.hasManager).length >= 3},
+            {id: 'biz_2', name: "Franchise owner", desc: "Unlock the Burger Empire", unlocked: false, check: (g) => g.businessLevel >= 2},
+            {id: 'money_2', name: "Millionaire", desc: "Earn $1M Lifetime", unlocked: false, check: (g) => g.stats.lifetimeEarnings >= 1000000},
+            {id: 'biz_3', name: "Industrialist", desc: "Unlock Car factory", unlocked: false, check: (g) => g.businessLevel >= 3}
+        ];
         this.researchTree = [
             {id: 'profit_1', name: "Marketing campaign", cost: 500, desc: "Global Income x1.15"},
             {id: 'speed_1', name: "Better Equipment", cost: 1200, desc: "All Stations Speed x1.1"},
             {id: 'hiring_1', name: "Recruiter", cost: 2500, desc: "Managers Cost -20%"},
             {id: 'profit_2', name: "TV Commercial", cost: 10000, desc: "Global income x1.5"},
             {id: 'speed_2', name: "Robotic Arms", cost: 25000, desc: "All stations speed x1.25"}
-        ]
+        ];
         this.tutorialActive = false;
         this.tutorialStep = 0;
         this.tutorialComplete = false;
@@ -164,6 +177,23 @@ class Game {
         this.updateUI();
         if (!this.tutorialComplete) {
             this.showTutorialPrompt();
+        }
+    }
+    getAchievementCount() {
+        return this.achievements.filter(a => a.unlocked).length;
+    }
+    checkAchievements() {
+        let changed = false;
+        this.achievements.forEach(ach => {
+            if (!ach.unlocked && ach.check(this)) {
+                ach.unlocked = true;
+                this.spawnFloater(400, 150, `🏆 ${ach.name.toUpperCase()}!`, "#e67e22");
+                changed = true;
+            }
+        });
+        if (changed) {
+            this.saveGame();
+            this.updateUI();
         }
     }
     spawnGoldenLemon() {
@@ -320,14 +350,14 @@ class Game {
             `;
             upgradeDiv.appendChild(uButton);
         });
-        constresearchDiv = document.createElement('div');
+        const researchDiv = document.createElement('div');
         researchDiv.className = 'station-control-group research-group';
         researchDiv.innerHTML = '<h3>Research Lab</h3>';
         this.researchTree.forEach(res => {
             const rButton = document.createElement('button');
             rButton.className = 'upgrade-button research-button';
             rButton.id = `res-${res.id}`;
-            rButto.onclick = () => this.buyResearch(res.id);
+            rButton.onclick = () => this.buyResearch(res.id);
             rButton.innerHTML = `
             <div>
                 <div class="button-label">${res.name}</div>
@@ -337,9 +367,20 @@ class Game {
             `;
             researchDiv.appendChild(rButton);
         });
+        const achDiv = document.createElement('div');
+        achDiv.className = 'station-control-group';
+        achDiv.style.gridColumn = "1 / -1";
+        achDiv.innerHTML = '<h3>Achievements (+5% Inc/Each)</h3>';
+        const achList = document.createElement('div');
+        achList.id = 'achievement-list';
+        achDiv.style.display = 'grid';
+        achList.style.gridTemplateColumns = '1fr 1fr';
+        achList.style.gap = '10px';
+        achDiv.appendChild(achList);
         container.appendChild(managerDiv);
         container.appendChild(upgradeDiv);
         container.appendChild(researchDiv);
+        container.appendChild(achDiv);
     }
     onMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
@@ -362,6 +403,7 @@ class Game {
                 clickedStation = true;
                 const started = s.tryStartWork(this);
                 if (started) {
+                    this.stats.clicks++;
                     this.spawnFloater(s.x + s.w/2 + this.scrollX, s.y, "Click!", "#ffffff");
                     if (this.tutorialActive) {
                         if (this.tutorialStep === 1 && index === 0) this.nextTutorialStep();
@@ -391,6 +433,8 @@ class Game {
     }
     addMoney(amount) {
         this.money += amount;
+        this.stats.lifetimeEarnings += amount;
+        this.checkAchievements();
         this.updateUI();
     }
     spawnFloater(x, y, text, color = '#ffffff') {
@@ -399,6 +443,7 @@ class Game {
         });
     }
     getManagerCost(i) {
+        const station = this.stations[i];
         let cost = (100 * (i+1)) * Math.pow(1.5, i) * this.businessLevel;
         if (station.managerLevel > 0) {
             baseCost = baseCost * 2 * Math.pow(1.5, station.managerLevel);
@@ -415,7 +460,8 @@ class Game {
         const cost = this.getManagerCost(i);
         if (!this.stations[i].hasManager && this.money >= cost) {
             this.money -= cost;
-            this.stations[i].hasManager = true;
+            this.stations[i].managerLevel++;
+            this.checkAchievements();
             this.updateUI();
             this.saveGame();
             if (this.stations[i].managerLevel > 1) {
@@ -463,6 +509,7 @@ class Game {
             this.inventory = {}; 
             this.setupStations();
             this.generateControls();
+            this.checkAchievements();
             this.updateUI();
             this.saveGame();
             this.scrollX = 0;
@@ -669,7 +716,6 @@ class Game {
                 this.ctx.strokeStyle = `rgba(241, 196, 15, ${(Math.sin(Date.now()/200)+1)/2})`;
                 this.ctx.lineWidth = 5;
                 this.ctx.strokeRect(drawX - 5, tS.y - 5, tS.w + 10, tS.h + 10);
-                const canvasRect = this.canvas.getBoundingClientRect();
                 this.tooltip.style.left = (drawX + tS.w/2) + 'px';
                 this.tooltip.style.top = (tS.y - 10) + 'px';
             } else if (this.tutorialStep === 3) {
